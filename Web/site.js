@@ -11,153 +11,157 @@ const startButton = document.getElementById("startButton");
 
 signalingSocket.onopen = () => console.log("Connected to signaling server");
 signalingSocket.onmessage = async (message) => {
-  const data = JSON.parse(message.data);
-  if (data.type === "offer") {
-    await handleOffer(data);
-  } else if (data.type === "answer") {
-    await handleAnswer(data);
-  } else if (data.type === "candidate") {
-    //await handleCandidate(data);
-    candidates.push(data);
-  }
+    const data = JSON.parse(message.data);
+    if (data.type === "offer") {
+        await handleOffer(data);
+    } else if (data.type === "answer") {
+        await handleAnswer(data);
+    } else if (data.type === "candidate") {
+        //await handleCandidate(data);
+        candidates.push(data);
+    }
 };
 
 async function startCall() {
-  await initializeLocalStream();
+    if (localStream) return;
 
-  peerConnection = new RTCPeerConnection();
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log("Sending candidate for initiator");
+    await initializeLocalStream();
 
-      sendMessage({
-        type: "candidate",
-        candidate: event.candidate,
-      });
-    }
-  };
-  peerConnection.ontrack = (event) => {
-    console.log("Setting remove video in start call");
-    remoteVideo.srcObject = event.streams[0];
-  };
+    peerConnection = new RTCPeerConnection();
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            console.log("Sending candidate for initiator");
 
-  localStream
-    .getTracks()
-    .forEach((track) => peerConnection.addTrack(track, localStream));
+            sendMessage({
+                type: "candidate",
+                candidate: event.candidate,
+            });
+        }
+    };
+    peerConnection.ontrack = (event) => {
+        console.log("Setting remove video in start call");
+        remoteVideo.srcObject = event.streams[0];
+    };
 
-  console.log("Creating offer");
+    localStream
+        .getTracks()
+        .forEach((track) => peerConnection.addTrack(track, localStream));
 
-  const offer = await peerConnection.createOffer();
+    console.log("Creating offer");
 
-  console.log("Offer created");
+    const offer = await peerConnection.createOffer();
 
-  console.log("Setting local description");
+    console.log("Offer created");
 
-  await peerConnection.setLocalDescription(offer);
+    console.log("Setting local description");
 
-  console.log("Local description set");
+    await peerConnection.setLocalDescription(offer);
 
-  console.log("Sending offer");
+    console.log("Local description set");
 
-  sendMessage({ type: "offer", sdp: offer.sdp });
+    console.log("Sending offer");
+
+    sendMessage({ type: "offer", sdp: offer.sdp });
 }
 
 async function handleOffer(offer) {
-  console.log("Offer received");
+    console.log("Offer received");
 
-  peerConnection = new RTCPeerConnection();
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log("Sending candidate for offer");
+    peerConnection = new RTCPeerConnection();
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            console.log("Sending candidate for offer");
 
-      sendMessage({
-        type: "candidate",
-        candidate: event.candidate,
-      });
-    }
-  };
-  peerConnection.ontrack = (event) => {
-    console.log("Setting remove video in offer received");
-    remoteVideo.srcObject = event.streams[0];
-  };
+            sendMessage({
+                type: "candidate",
+                candidate: event.candidate,
+            });
+        } else {
+            // All candidates have been sent
+        }
+    };
+    peerConnection.ontrack = (event) => {
+        console.log("Setting remove video in offer received");
+        remoteVideo.srcObject = event.streams[0];
+    };
 
-  console.log("Setting remote description");
+    if (!localStream) await initializeLocalStream();
 
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+    localStream
+        .getTracks()
+        .forEach((track) => peerConnection.addTrack(track, localStream));
 
-  console.log("Remote description set");
+    console.log("Setting remote description");
 
-  if (!localStream) await initializeLocalStream();
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
-  localStream
-    .getTracks()
-    .forEach((track) => peerConnection.addTrack(track, localStream));
+    console.log("Remote description set");
 
-  console.log("Creating answer");
+    console.log("Creating answer");
 
-  const answer = await peerConnection.createAnswer();
+    const answer = await peerConnection.createAnswer();
 
-  console.log("Answer created");
+    console.log("Answer created");
 
-  console.log("Setting local description");
+    console.log("Setting local description");
 
-  await peerConnection.setLocalDescription(answer);
+    await peerConnection.setLocalDescription(answer);
 
-  console.log("Local description set");
+    console.log("Local description set");
 
-  console.log("Sending answer");
+    console.log("Sending answer");
 
-  sendMessage({ type: "answer", sdp: answer.sdp });
+    sendMessage({ type: "answer", sdp: answer.sdp });
 }
 
 async function handleAnswer(answer) {
-  console.log("Setting remote description.");
+    console.log("Setting remote description.");
 
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
 
-  console.log("Remote description set.");
+    console.log("Remote description set.");
 
-  if (candidates.length > 0) {
-    candidates.forEach((candidate) => {
-      handleCandidate(candidate);
-    });
+    if (candidates.length > 0) {
+        candidates.forEach((candidate) => {
+            handleCandidate(candidate);
+        });
 
-    candidates.length = 0;
-  }
+        candidates.length = 0;
+    }
 }
 
 async function handleCandidate(candidate) {
-  console.log("Adding Ice Candidate");
+    console.log("Adding Ice Candidate");
 
-  await peerConnection.addIceCandidate(
-    new RTCIceCandidate(candidate),
-    function (e) {
-      console.log("success");
-      console.log(e);
-    },
-    function (e) {
-      console.log("fail");
-      console.log(e);
-    }
-  );
+    await peerConnection.addIceCandidate(
+        new RTCIceCandidate(candidate),
+        function (e) {
+            console.log("success");
+            console.log(e);
+        },
+        function (e) {
+            console.log("fail");
+            console.log(e);
+        }
+    );
 }
 
 function sendMessage(message) {
-  signalingSocket.send(JSON.stringify(message));
+    signalingSocket.send(JSON.stringify(message));
 }
 
 startButton.addEventListener("click", startCall);
 
 async function initializeLocalStream() {
-  if (!localStream) {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      });
-      localVideo.srcObject = localStream;
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
+    if (!localStream) {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false,
+            });
+            localVideo.srcObject = localStream;
+        } catch (error) {
+            console.error("Error accessing media devices:", error);
+        }
     }
-  }
 }
