@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35312.102
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebRTCExample", "WebRTCExample\WebRTCExample.csproj", "{571E580B-3E22-4189-9286-EF712884536C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{01725EC9-599E-4278-83B0-6C88E441CBB3}"
+	ProjectSection(SolutionItems) = preProject
+		Web\index.html = Web\index.html
+		Web\package.json = Web\package.json
+		Web\site.js = Web\site.js
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "..\Test\Test.csproj", "{AF66D2F8-8C3C-4E1E-90ED-607BA4CF65D9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{571E580B-3E22-4189-9286-EF712884536C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{571E580B-3E22-4189-9286-EF712884536C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{571E580B-3E22-4189-9286-EF712884536C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{571E580B-3E22-4189-9286-EF712884536C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF66D2F8-8C3C-4E1E-90ED-607BA4CF65D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF66D2F8-8C3C-4E1E-90ED-607BA4CF65D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF66D2F8-8C3C-4E1E-90ED-607BA4CF65D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF66D2F8-8C3C-4E1E-90ED-607BA4CF65D9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7FA29CFE-243B-417A-A6C6-A9FC198E5853}
+	EndGlobalSection
+EndGlobal
