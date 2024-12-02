@@ -1,167 +1,152 @@
-﻿let serverUrl = "ws://localhost:5201/ws";
-
+﻿// A collection to store candidates until its time to call 'addIceCandidate'
 const candidates = [];
+const serverUrl = "ws://localhost:5201/ws";
 const signalingSocket = new WebSocket(serverUrl);
-let localStream;
-let peerConnection;
 
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
 const startButton = document.getElementById("startButton");
 
+let localStream;
+let peerConnection;
+
 signalingSocket.onopen = () => console.log("Connected to signaling server");
+// Handle web socket events
 signalingSocket.onmessage = async (message) => {
-    const data = JSON.parse(message.data);
-    if (data.type === "offer") {
-        await handleOffer(data);
-    } else if (data.type === "answer") {
-        await handleAnswer(data);
-    } else if (data.type === "candidate") {
-        //await handleCandidate(data);
-        candidates.push(data);
-    }
+  const data = JSON.parse(message.data);
+  if (data.type === "connection") {
+    handleOnConnected(data);
+  } else if (data.type === "offer") {
+    await handleOffer(data);
+  } else if (data.type === "answer") {
+    await handleAnswer(data);
+  } else if (data.type === "candidate") {
+    if (data.ready) {
+      candidates.forEach(async (candidate) => {
+        await handleCandidate(candidate.candidate);
+      });
+      // Clear queue
+      candidates.length = 0;
+    } else candidates.push(data);
+  }
 };
 
 async function startCall() {
-    if (localStream) return;
+  startButton.disabled = true;
 
-    await initializeLocalStream();
+  await initializeLocalStream();
 
-    peerConnection = new RTCPeerConnection();
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            console.log("Sending candidate for initiator");
+  peerConnection = new RTCPeerConnection();
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      sendMessage({
+        type: "candidate",
+        candidate: event.candidate,
+        ready: false,
+      });
+    } else {
+      // All candidates have been sent. Notify peers that they can call 'addIceCandidate'.
+      sendMessage({
+        type: "candidate",
+        ready: true,
+      });
+    }
+  };
+  peerConnection.ontrack = (event) => {
+    // Show the remote video stream
+    remoteVideo.srcObject = event.streams[0];
+  };
 
-            sendMessage({
-                type: "candidate",
-                candidate: event.candidate,
-            });
-        }
-    };
-    peerConnection.ontrack = (event) => {
-        console.log("Setting remove video in start call");
-        remoteVideo.srcObject = event.streams[0];
-    };
+  localStream
+    .getTracks()
+    .forEach((track) => peerConnection.addTrack(track, localStream));
 
-    localStream
-        .getTracks()
-        .forEach((track) => peerConnection.addTrack(track, localStream));
+  // Create an offer to send to other pers
+  const offer = await peerConnection.createOffer();
 
-    console.log("Creating offer");
+  // Set our local description
+  await peerConnection.setLocalDescription(offer);
 
-    const offer = await peerConnection.createOffer();
-
-    console.log("Offer created");
-
-    console.log("Setting local description");
-
-    await peerConnection.setLocalDescription(offer);
-
-    console.log("Local description set");
-
-    console.log("Sending offer");
-
-    sendMessage({ type: "offer", sdp: offer.sdp });
+  // Send offer to connected peers
+  sendMessage({ type: "offer", sdp: offer.sdp });
 }
 
+// Wire start-call click event
+startButton.addEventListener("click", startCall);
+
 async function handleOffer(offer) {
-    console.log("Offer received");
+  // When we receive an offer we can start with creating a peer connection
+  peerConnection = new RTCPeerConnection();
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      sendMessage({
+        type: "candidate",
+        candidate: event.candidate,
+        ready: false,
+      });
+    } else {
+      // All candidates have been sent. Notify peers that they can call 'addIceCandidate'.
+      sendMessage({
+        type: "candidate",
+        ready: true,
+      });
+    }
+  };
+  peerConnection.ontrack = (event) => {
+    remoteVideo.srcObject = event.streams[0];
+  };
 
-    peerConnection = new RTCPeerConnection();
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            console.log("Sending candidate for offer");
+  // Ensure our local stream is intialized before adding the tracks to the peer connection
+  await initializeLocalStream();
+  localStream
+    .getTracks()
+    .forEach((track) => peerConnection.addTrack(track, localStream));
 
-            sendMessage({
-                type: "candidate",
-                candidate: event.candidate,
-            });
-        } else {
-            // All candidates have been sent
-        }
-    };
-    peerConnection.ontrack = (event) => {
-        console.log("Setting remove video in offer received");
-        remoteVideo.srcObject = event.streams[0];
-    };
+  // Set our remote description using the offer
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
-    if (!localStream) await initializeLocalStream();
+  // Create our answer
+  const answer = await peerConnection.createAnswer();
 
-    localStream
-        .getTracks()
-        .forEach((track) => peerConnection.addTrack(track, localStream));
+  // Set our local description
+  await peerConnection.setLocalDescription(answer);
 
-    console.log("Setting remote description");
-
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-    console.log("Remote description set");
-
-    console.log("Creating answer");
-
-    const answer = await peerConnection.createAnswer();
-
-    console.log("Answer created");
-
-    console.log("Setting local description");
-
-    await peerConnection.setLocalDescription(answer);
-
-    console.log("Local description set");
-
-    console.log("Sending answer");
-
-    sendMessage({ type: "answer", sdp: answer.sdp });
+  // Send answer to peers
+  sendMessage({ type: "answer", sdp: answer.sdp });
 }
 
 async function handleAnswer(answer) {
-    console.log("Setting remote description.");
-
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-
-    console.log("Remote description set.");
-
-    if (candidates.length > 0) {
-        candidates.forEach((candidate) => {
-            handleCandidate(candidate);
-        });
-
-        candidates.length = 0;
-    }
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
 }
 
 async function handleCandidate(candidate) {
-    console.log("Adding Ice Candidate");
+  // This should only be called once we've received all the ICE candidates
+  await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+}
 
-    await peerConnection.addIceCandidate(
-        new RTCIceCandidate(candidate),
-        function (e) {
-            console.log("success");
-            console.log(e);
-        },
-        function (e) {
-            console.log("fail");
-            console.log(e);
-        }
-    );
+function handleOnConnected(data) {
+  if (data.isConnected) {
+    // Only enable the "Start Call" button if someone has connected
+    startButton.disabled = false;
+  } else {
+    startButton.disabled = true;
+  }
 }
 
 function sendMessage(message) {
-    signalingSocket.send(JSON.stringify(message));
+  signalingSocket.send(JSON.stringify(message));
 }
 
-startButton.addEventListener("click", startCall);
-
 async function initializeLocalStream() {
-    if (!localStream) {
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: false,
-            });
-            localVideo.srcObject = localStream;
-        } catch (error) {
-            console.error("Error accessing media devices:", error);
-        }
+  if (!localStream) {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      localVideo.srcObject = localStream;
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
     }
+  }
 }
