@@ -27,7 +27,7 @@ app.Use(async (context, next) =>
     }
 
     var socket = await context.WebSockets.AcceptWebSocketAsync();
-    var clientId = Guid.NewGuid().ToString();
+    var clientId = Guid.NewGuid();
     Context.Clients.TryAdd(clientId, socket);
 
     // Notify all clients that someone connected

@@ -7,9 +7,9 @@ namespace WebRTCExample
     public static class Context
     {
         // Dictionary to keep track of connected WebSocket clients
-        public static ConcurrentDictionary<string, WebSocket> Clients = new ConcurrentDictionary<string, WebSocket>();
+        public static ConcurrentDictionary<Guid, WebSocket> Clients = new ConcurrentDictionary<Guid, WebSocket>();
 
-        public static async Task NotifyAllOtherClients(string clientId, string message)
+        public static async Task NotifyAllOtherClients(Guid clientId, string message)
         {
             // Relay message to other clients
             foreach (var client in Clients)

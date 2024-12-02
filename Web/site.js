@@ -34,6 +34,7 @@ signalingSocket.onmessage = async (message) => {
 async function startCall() {
   startButton.disabled = true;
 
+  // Once we start a call, ask for video/audio permissions
   await initializeLocalStream();
 
   peerConnection = new RTCPeerConnection();
@@ -96,8 +97,10 @@ async function handleOffer(offer) {
     remoteVideo.srcObject = event.streams[0];
   };
 
-  // Ensure our local stream is intialized before adding the tracks to the peer connection
+  // Ask for video/audio permissions
   await initializeLocalStream();
+
+  // Add all stream tracks to the peer connection
   localStream
     .getTracks()
     .forEach((track) => peerConnection.addTrack(track, localStream));
@@ -111,7 +114,7 @@ async function handleOffer(offer) {
   // Set our local description
   await peerConnection.setLocalDescription(answer);
 
-  // Send answer to peers
+  // Send answer to peer
   sendMessage({ type: "answer", sdp: answer.sdp });
 }
 
@@ -138,15 +141,11 @@ function sendMessage(message) {
 }
 
 async function initializeLocalStream() {
-  if (!localStream) {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      localVideo.srcObject = localStream;
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
-    }
-  }
+  if (localStream) return; // Make sure we don't intialize it twice
+
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: true,
+  });
+  localVideo.srcObject = localStream;
 }
